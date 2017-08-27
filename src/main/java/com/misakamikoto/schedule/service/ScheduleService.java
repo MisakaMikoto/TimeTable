@@ -15,24 +15,55 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * The type Schedule service.
+ */
 @Service
 public class ScheduleService {
+    /**
+     * The Schedule mapper.
+     */
     @Autowired
     ScheduleMapper scheduleMapper;
+    /**
+     * The constant isOK.
+     */
     public static boolean isOK = false;
 
+    /**
+     * Gets schedule.
+     *
+     * @param userId the user id
+     * @return the schedule
+     */
     public List<ScheduleVO> getSchedule(String userId) {
         return scheduleMapper.getSchedule(userId);
     }
 
+    /**
+     * Save schedule.
+     *
+     * @param timeTableJSONObject the time table json object
+     */
     public void saveSchedule(Map timeTableJSONObject) {
         scheduleMapper.saveSchedule(timeTableJSONObject);
     }
 
+    /**
+     * Clear schedule.
+     *
+     * @param userId the user id
+     */
     public void clearSchedule(String userId) {
         scheduleMapper.clearSchedule(userId);
     }
 
+    /**
+     * Algorithm with time table string [ ] [ ].
+     *
+     * @param timeTableJSONObject the time table json object
+     * @return the string [ ] [ ]
+     */
     public String[][] algorithmWithTimeTable(Map timeTableJSONObject) {
         // init isOK
         isOK = false;
@@ -102,6 +133,12 @@ public class ScheduleService {
         return scheduleArray;
     }
 
+    /**
+     * Create dummy time table.
+     *
+     * @param scheduleMap      the schedule map
+     * @param subjectCreditMap the subject credit map
+     */
     public void createDummyTimeTable(Map<String, List<String>> scheduleMap, Map<String, Integer> subjectCreditMap) {
         // 과목의 갯수만큼...
         for (String key : subjectCreditMap.keySet()) {
@@ -123,7 +160,12 @@ public class ScheduleService {
         }
     }
 
-    // 랜덤 요일을 생성한다.
+    /**
+     * Create day random list.
+     *
+     * @param dayRandomList the day random list
+     */
+// 랜덤 요일을 생성한다.
     // 0 : 월
     // 1 : 화
     // 2 : 수
@@ -155,7 +197,13 @@ public class ScheduleService {
         }
     }
 
-    // 요일에 기반하여 랜덤 수업 교시를 생성한다.
+    /**
+     * Create day time random list.
+     *
+     * @param day               the day
+     * @param dayTimeRandomList the day time random list
+     */
+// 요일에 기반하여 랜덤 수업 교시를 생성한다.
     public void createDayTimeRandomList(int day, List<String> dayTimeRandomList) {
         int random = (int) (Math.random() * 4);
         String dayTime = day + "," + random;
@@ -163,7 +211,13 @@ public class ScheduleService {
 
     }
 
-    // 수업 일정을 배치한다.
+    /**
+     * Mapping day time random list string [ ] [ ].
+     *
+     * @param scheduleMap the schedule map
+     * @return the string [ ] [ ]
+     */
+// 수업 일정을 배치한다.
     public String[][] mappingDayTimeRandomList(Map<String, List<String>> scheduleMap) {
         // 시간표 배열
         String[][] scheduleArray = new String[4][5];
@@ -198,7 +252,14 @@ public class ScheduleService {
         return scheduleArray;
     }
 
-    // 수업 교시에 겹치는 과목의 중복을 최소화 한다.
+    /**
+     * Duplicate minimization time table boolean.
+     *
+     * @param scheduleArray    the schedule array
+     * @param subjectCreditMap the subject credit map
+     * @return the boolean
+     */
+// 수업 교시에 겹치는 과목의 중복을 최소화 한다.
     // 한 가지 과목이 모두 겹치는 부분에 들어가서는 안된다. (3학점이면 3개, 2학점이면 2개가 겹치면 안된다.)
     public static boolean duplicateMinimizationTimeTable(String[][] scheduleArray, Map<String, Integer> subjectCreditMap) {
         boolean isComplete = false;
@@ -235,7 +296,13 @@ public class ScheduleService {
         return isComplete;
     }
 
-    // 랜덤하게 생긴 시간표의 중복 최소화
+    /**
+     * Minimization time table boolean.
+     *
+     * @param scheduleArray the schedule array
+     * @return the boolean
+     */
+// 랜덤하게 생긴 시간표의 중복 최소화
     // 1. 모두 2학점이면 남는 교시는 12교시
     // 2. 모두 3학점이면 남는 교시는 4교시
     // 3. 때문에 전체 20 교시 중 16교시는 반드시 확보하여야 한다.
@@ -286,7 +353,14 @@ public class ScheduleService {
         return isComplete;
     }
 
-    // 랜덤하게 생긴 시간표를 각 학점에 맞게 일정 횟수씩 제거하여 정식 시간표 만들기
+    /**
+     * Mapping time table boolean.
+     *
+     * @param scheduleArray    the schedule array
+     * @param subjectCreditMap the subject credit map
+     * @return the boolean
+     */
+// 랜덤하게 생긴 시간표를 각 학점에 맞게 일정 횟수씩 제거하여 정식 시간표 만들기
     // 1. 해당 교시에 중복되지 않은 과목의 갯수를 센다.
     // 2. 해당 교시에 중복되지 않은 과목의 갯수가 많은 과목들은 중복된 해당 교시에서 제거한다.
     //  2.1. 2 학점 짜리 과목 우선으로 제거한다. 두 번째
@@ -334,7 +408,13 @@ public class ScheduleService {
         return isMapping;
     }
 
-    // 중복된 것들을 하나씩 제거하며 시간표를 세운다.
+    /**
+     * Create time table.
+     *
+     * @param scheduleArray    the schedule array
+     * @param subjectCreditMap the subject credit map
+     */
+// 중복된 것들을 하나씩 제거하며 시간표를 세운다.
     public void createTimeTable(String[][] scheduleArray, Map<String, Integer> subjectCreditMap) {
         Map<String, Integer> checkSubjectCreditMap = new HashMap<String, Integer>();
 
