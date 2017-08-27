@@ -34,13 +34,27 @@ app.controller("mypageController", ['$scope', '$location', '$http', function ($s
                 $scope.subjects[i].allCredit = parseInt($scope.subjects[i].allCredit) - parseInt(targetCredit);
             }
         }
-        let target = $scope.subjects.indexOf(subject);
-        $scope.subjects.splice(target, 1);
-        $scope.sendSubjects.splice(target, 1);
+        $scope.subjects.splice($scope.subjects.indexOf(subject), 1);
     }
 
     $scope.complete = function() {
-        getSchedule();
+        if(validateComplete()) {
+            $http({
+                method: 'POST',
+                url: '/schedule/createTimeTable',
+                data: {
+                    subjects: angular.fromJson($scope.sendSubjects)
+                },
+                headers: {'Content-Type': 'application/json; charset=utf-8'}
+            }).then(function success(response) {
+                if (response.data) {
+                    $location.path("/timetable").search({id:$scope.id, data: response.data});
+                }
+
+            }, function fail(error) {
+                console.log(error);
+            });
+        }
     }
 
     function getLastAllCredit() {
@@ -96,60 +110,5 @@ app.controller("mypageController", ['$scope', '$location', '$http', function ($s
             alert("수강 학점은 최소 18 학점이어야 합니다.");
         }
         return isOK;
-    }
-
-    function getSchedule() {
-        if(validateComplete()) {
-            $http({
-                method: 'POST',
-                url: '/schedule/get',
-                data: $.param({
-                    userId: $scope.id
-                }),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-                }
-            }).then(function success(response) {
-                if (response.data.length > 0) {
-                    let confirm = window.confirm("저장된 데이터가 있습니다. 업데이트 하시겠습니까?");
-                    if (confirm) {
-                        complete(true);
-                    }
-
-                } else {
-                    complete(false);
-                }
-
-            }, function fail(error) {
-                console.log(error);
-            });
-        }
-    }
-
-    function complete(isUpdate) {
-        var url = "";
-        if(isUpdate) {
-            url = '/schedule/updateTimeTable';
-
-        } else {
-            url = '/schedule/createTimeTable'
-        }
-
-        $http({
-            method: 'POST',
-            url: url,
-            data: {
-                subjects: angular.fromJson($scope.sendSubjects)
-            },
-            headers: {'Content-Type': 'application/json; charset=utf-8'}
-        }).then(function success(response) {
-            if (response.data) {
-                alert("저장 되었습니다.");
-                $location.path("/timetable").search({id:$scope.id, data: response.data});
-            }
-
-        }, function fail(error) {
-            console.log(error);
-        });
     }
 }]);

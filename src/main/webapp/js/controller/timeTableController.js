@@ -11,15 +11,15 @@ app.controller("timetableController", ['$scope', '$location', '$http', function 
         let sendSchedule = {"userId" : $scope.id, "time" : "", "subject" : ""};
         sendSchedule.time = i;
 
+        let timeSchedule = {"time" : 9 + parseInt((i * 2)) + ": 00~" + parseInt(9 + parseInt(((i + 1) * 2))) + " : 00",
+            "monday" : "", "tuesday" : "", "wednesday" : "", "thursday" : "", "friday" : ""};
 
-        let timeSchedule = {"time" : "9 : 00", "monday" : "", "tuesday" : "", "wednesday" : "", "thursday" : "", "friday" : ""};
         let weekData = $scope.data[i];
         for(var j = 0; j < weekData.length; j++) {
             let dayData = "";
             if (weekData[j] != "x") {
                 dayData = weekData[j];
             }
-            timeSchedule.time = increaseTime(timeSchedule.time);
 
             if (j == 0) {
                 timeSchedule.monday = dayData;
@@ -42,10 +42,10 @@ app.controller("timetableController", ['$scope', '$location', '$http', function 
                 sendSchedule.subject += "," + weekData[j];
             }
         }
+
         // 1교시는 두 시간
         // 본 알고리즘은 교시 두번 씩 push
         $scope.timeTableData.push(timeSchedule);
-        timeSchedule.time = increaseTime(timeSchedule.time);
         $scope.timeTableData.push(timeSchedule);
 
         // 서버로 저장할 데이터 가공
@@ -96,13 +96,5 @@ app.controller("timetableController", ['$scope', '$location', '$http', function 
 
     $scope.back = function() {
         $location.path("/mypage");
-    }
-
-    function increaseTime(timeStr) {
-        let split = timeStr.split(":");
-        let time = parseInt(split[0].trim());
-        ++time;
-
-        return time + " : 00";
     }
 }]);

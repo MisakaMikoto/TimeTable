@@ -12,56 +12,27 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-/**
- * The type Schedule service.
- */
 @Service
 public class ScheduleService {
-    /**
-     * The Schedule mapper.
-     */
     @Autowired
     ScheduleMapper scheduleMapper;
-    /**
-     * The constant isOK.
-     */
     public static boolean isOK = false;
 
-    /**
-     * Gets schedule.
-     *
-     * @param userId the user id
-     * @return the schedule
-     */
     public List<ScheduleVO> getSchedule(String userId) {
         return scheduleMapper.getSchedule(userId);
     }
 
-    /**
-     * Save schedule.
-     *
-     * @param timeTableJSONObject the time table json object
-     */
     public void saveSchedule(Map timeTableJSONObject) {
         scheduleMapper.saveSchedule(timeTableJSONObject);
     }
 
-    /**
-     * Clear schedule.
-     *
-     * @param userId the user id
-     */
     public void clearSchedule(String userId) {
         scheduleMapper.clearSchedule(userId);
     }
 
-    /**
-     * Algorithm with time table string [ ] [ ].
-     *
-     * @param timeTableJSONObject the time table json object
-     * @return the string [ ] [ ]
-     */
     public String[][] algorithmWithTimeTable(Map timeTableJSONObject) {
         // init isOK
         isOK = false;
@@ -70,7 +41,7 @@ public class ScheduleService {
         Map<String, Integer> subjectCreditMap = new HashMap<String, Integer>();
 
         List list = (List) timeTableJSONObject.get("subjects");
-        for(int i = 0; i < list.size(); i++) {
+        for (int i = 0; i < list.size(); i++) {
             Subject subject = gson.fromJson(list.get(i).toString(), Subject.class);
             Double credit = Double.parseDouble(subject.getCredit());
             subjectCreditMap.put(subject.getName(), credit.intValue());
@@ -84,10 +55,20 @@ public class ScheduleService {
         int count = 0;
         while (!isOK) {
             ++count;
-            createTimeTable(scheduleMap, subjectCreditMap);
+            createDummyTimeTable(scheduleMap, subjectCreditMap);
             scheduleArray = mappingDayTimeRandomList(scheduleMap);
-            minimizationTimeTable(scheduleArray);
-            mappingTimeTable(scheduleArray, subjectCreditMap);
+
+            // 아래 세개는 원활한 데이터 만들기에 필요한 조건들이므로 순서대로 실행되어야 한다.
+            // 속도를 위한 중요도는 duplicateMinimizationTimeTable > minimizationTimeTable > mappingTimeTable 순이기 때문에
+            // 순서대로 진행해야 한다.
+            if(duplicateMinimizationTimeTable(scheduleArray, subjectCreditMap)) {
+                if(minimizationTimeTable(scheduleArray)) {
+                    if(mappingTimeTable(scheduleArray, subjectCreditMap)) {
+                        // 최종적으로 중복된 수업들을 제거하며 결과를 만든다.
+                        createTimeTable(scheduleArray, subjectCreditMap);
+                    }
+                }
+            }
         }
 
         System.out.println(count + "번의 재도전");
@@ -108,8 +89,6 @@ public class ScheduleService {
             System.out.println();
         }
 
-        removeDuplicateTimeTable(scheduleArray, subjectCreditMap);
-
         System.out.println();
         System.out.println("배치가 완료된 시간표");
         for (int i = 0; i < 4; i++) {
@@ -123,13 +102,7 @@ public class ScheduleService {
         return scheduleArray;
     }
 
-    /**
-     * Create time table.
-     *
-     * @param scheduleMap      the schedule map
-     * @param subjectCreditMap the subject credit map
-     */
-    public void createTimeTable(Map<String, List<String>> scheduleMap, Map<String, Integer> subjectCreditMap) {
+    public void createDummyTimeTable(Map<String, List<String>> scheduleMap, Map<String, Integer> subjectCreditMap) {
         // 과목의 갯수만큼...
         for (String key : subjectCreditMap.keySet()) {
             List<Integer> dayRandomList = new ArrayList<Integer>();
@@ -150,12 +123,7 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * Create day random list.
-     *
-     * @param dayRandomList the day random list
-     */
-// 랜덤 요일을 생성한다.
+    // 랜덤 요일을 생성한다.
     // 0 : 월
     // 1 : 화
     // 2 : 수
@@ -187,13 +155,7 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * Create day time random list.
-     *
-     * @param day               the day
-     * @param dayTimeRandomList the day time random list
-     */
-// 요일에 기반하여 랜덤 수업 교시를 생성한다.
+    // 요일에 기반하여 랜덤 수업 교시를 생성한다.
     public void createDayTimeRandomList(int day, List<String> dayTimeRandomList) {
         int random = (int) (Math.random() * 4);
         String dayTime = day + "," + random;
@@ -201,13 +163,7 @@ public class ScheduleService {
 
     }
 
-    /**
-     * Mapping day time random list string [ ] [ ].
-     *
-     * @param scheduleMap the schedule map
-     * @return the string [ ] [ ]
-     */
-// 수업 일정을 배치한다.
+    // 수업 일정을 배치한다.
     public String[][] mappingDayTimeRandomList(Map<String, List<String>> scheduleMap) {
         // 시간표 배열
         String[][] scheduleArray = new String[4][5];
@@ -242,23 +198,60 @@ public class ScheduleService {
         return scheduleArray;
     }
 
-    /**
-     * Minimization time table.
-     *
-     * @param scheduleArray the schedule array
-     */
-// 랜덤하게 생긴 시간표의 중복 최소화
+    // 수업 교시에 겹치는 과목의 중복을 최소화 한다.
+    // 한 가지 과목이 모두 겹치는 부분에 들어가서는 안된다. (3학점이면 3개, 2학점이면 2개가 겹치면 안된다.)
+    public static boolean duplicateMinimizationTimeTable(String[][] scheduleArray, Map<String, Integer> subjectCreditMap) {
+        boolean isComplete = false;
+
+        String check = "";
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 5; j++) {
+                // 중복된 교시가 있는 경우를 저장한다.
+                if(scheduleArray[i][j].length() > 1) {
+                    check += scheduleArray[i][j];
+                }
+            }
+        }
+
+        for(String key : subjectCreditMap.keySet()) {
+            // 정규식을 통해 반복된 횟수를 찾아내고
+            // 학점을 통해 해당 중복 여부를 판단한다.
+            Pattern p = Pattern.compile(key);
+            Matcher m = p.matcher(check);
+
+            int count = 0;
+            for(int i = 0; m.find(i); i = m.end()) {
+                ++count;
+            }
+
+            if(subjectCreditMap.get(key) > count) {
+                isComplete = true;
+
+            } else {
+                isComplete = false;
+                break;
+            }
+        }
+        return isComplete;
+    }
+
+    // 랜덤하게 생긴 시간표의 중복 최소화
     // 1. 모두 2학점이면 남는 교시는 12교시
     // 2. 모두 3학점이면 남는 교시는 4교시
     // 3. 때문에 전체 20 교시 중 16교시는 반드시 확보하여야 한다.
     //  3-1. 남는 자리 (x) 는 절대 5개가 되면 안되기 때문에
-    //  3-2. 해당 교시에 과목수가 3개가 겹쳐도 안되기 때문에 (추측)
-    public void minimizationTimeTable(String[][] scheduleArray) {
+    //  3-2. 해당 교시에 과목수가 3개가 겹쳐도 안되기 때문에
+    public boolean minimizationTimeTable(String[][] scheduleArray) {
         int xCount = 0;
         boolean isTriple = false;
+        boolean isComplete = false;
 
+        // 3-1, 3-2 검사를 수행한다.
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 5; j++) {
+                // 3-3 검사를 위해 중복된 것들을 저장해 놓는다.
+
+
                 String target = scheduleArray[i][j];
                 String[] split = target.split(",");
 
@@ -281,34 +274,26 @@ public class ScheduleService {
             }
         }
 
-        if (isTriple) {
-            isOK = false;
-
-        } else {
+        if (!isTriple) {
             // 과목수가 3개이상 겹치지 않으며 공강의 자리가 5개 이하인 경우에만
-            // timetable 을 만들 준비가 되어있다.
             if (xCount < 4) {
-                isOK = true;
+                isComplete = true;
 
             } else {
-                isOK = false;
+                isComplete = false;
             }
         }
+        return isComplete;
     }
 
-    /**
-     * Mapping time table.
-     *
-     * @param scheduleArray    the schedule array
-     * @param subjectCreditMap the subject credit map
-     */
-// 랜덤하게 생긴 시간표를 각 학점에 맞게 일정 횟수씩 제거하여 정식 시간표 만들기
+    // 랜덤하게 생긴 시간표를 각 학점에 맞게 일정 횟수씩 제거하여 정식 시간표 만들기
     // 1. 해당 교시에 중복되지 않은 과목의 갯수를 센다.
     // 2. 해당 교시에 중복되지 않은 과목의 갯수가 많은 과목들은 중복된 해당 교시에서 제거한다.
     //  2.1. 2 학점 짜리 과목 우선으로 제거한다. 두 번째
     //  2.2. 해당 학점이 2 학점이면 1개가 기준
     //  2.3. 해당 학점이 3 학점이면 2개가 기준
-    public void mappingTimeTable(String[][] scheduleArray, Map<String, Integer> subjectCreditMap) {
+    public boolean mappingTimeTable(String[][] scheduleArray, Map<String, Integer> subjectCreditMap) {
+        boolean isMapping = false;
         Map<String, Integer> checkSubjectCreditMap = new HashMap<String, Integer>();
 
         for (int i = 0; i < 4; i++) {
@@ -329,26 +314,28 @@ public class ScheduleService {
             }
         }
 
+        boolean isCheck = true;
         for (String key : subjectCreditMap.keySet()) {
             for (String checkKey : checkSubjectCreditMap.keySet()) {
                 int count = checkSubjectCreditMap.get(checkKey);
 
                 if (key.equals(checkKey)) {
                     if (count < 1) {
-                        isOK = false;
+                        isMapping = false;
+                        break;
                     }
                 }
             }
         }
+
+        if(isCheck) {
+            isMapping = true;
+        }
+        return isMapping;
     }
 
-    /**
-     * Remove duplicate time table.
-     *
-     * @param scheduleArray    the schedule array
-     * @param subjectCreditMap the subject credit map
-     */
-    public void removeDuplicateTimeTable(String[][] scheduleArray, Map<String, Integer> subjectCreditMap) {
+    // 중복된 것들을 하나씩 제거하며 시간표를 세운다.
+    public void createTimeTable(String[][] scheduleArray, Map<String, Integer> subjectCreditMap) {
         Map<String, Integer> checkSubjectCreditMap = new HashMap<String, Integer>();
 
         for (int i = 0; i < 4; i++) {
@@ -375,12 +362,30 @@ public class ScheduleService {
                                 || (checkSubjectCreditMap.get(standard) == null && checkSubjectCreditMap.get(secondStandard) != null)
                                 || (checkSubjectCreditMap.get(standard) != null && subjectCreditMap.get(standard) - checkSubjectCreditMap.get(standard) > 1)) {
                             scheduleArray[i][j] = target.substring(0, index + 1);
-                            checkSubjectCreditMap.put(standard, ++count);
+
+                            // 최초이면 ++
+                            if(checkSubjectCreditMap.get(standard) == null) {
+                                checkSubjectCreditMap.put(standard, ++count);
+
+                                // 최초가 아니면 증가
+                            } else {
+                                int increase = checkSubjectCreditMap.get(standard) + 1;
+                                checkSubjectCreditMap.put(standard, increase);
+                            }
 
                             // 뒤의 과목이 최초일 경우 뒤의 과목을 기준
                         } else if (checkSubjectCreditMap.get(standard) != null && checkSubjectCreditMap.get(secondStandard) == null) {
                             scheduleArray[i][j] = target.substring(index + 2, target.length());
-                            checkSubjectCreditMap.put(secondStandard, ++count);
+
+                            // 최초이면 ++
+                            if(checkSubjectCreditMap.get(secondStandard) == null) {
+                                checkSubjectCreditMap.put(secondStandard, ++count);
+
+                                // 최초가 아니면 증가
+                            } else {
+                                int increase = checkSubjectCreditMap.get(secondStandard) + 1;
+                                checkSubjectCreditMap.put(secondStandard, increase);
+                            }
 
                             // 최초가 아니고 앞의 것을 기준으로 잡았으나 앞의 과목이 모든 일정이 채워지고 뒤의 것이 일정이 비어있다면
                         } else if ((checkSubjectCreditMap.get(standard) != null && subjectCreditMap.get(standard) - checkSubjectCreditMap.get(standard) == 1)
@@ -428,9 +433,22 @@ public class ScheduleService {
             }
         }
 
-        System.out.println();
+        // 마지막 학점에 대한 배치 카운트 검사
+        // 학점에 대한 배치 카운트가 제대로 되지 않은 채 테이블이 만들어지면 올바르지 못하므로
+        // 마지막으로 검사한다.
+        boolean isCheck = true;
         for(String key : checkSubjectCreditMap.keySet()) {
-            System.out.println(key + " 가 나온 횟수 : " + checkSubjectCreditMap.get(key));
+            if(subjectCreditMap.get(key) - checkSubjectCreditMap.get(key) > 1) {
+                isCheck = false;
+                break;
+            }
+        }
+
+        if(isCheck) {
+            isOK = true;
+
+        } else {
+            isOK = false;
         }
     }
 }
