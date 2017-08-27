@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="/css/center.css">
+    <title></title>
+</head>
+<body>
+<div class="center" style="width: 500px; margin-top: 200px;" ng-controller="timetableController">
+    <H2> {{ id }} 님의 완성된 시간표 입니다. </H2>
+
+    <table class="table" style="width: 500px; margin-top: 50px;">
+        <thead>
+        <td>#</td>
+        <td>월</td>
+        <td>화</td>
+        <td>수</td>
+        <td>목</td>
+        <td>금</td>
+        </thead>
+
+        <tbody>
+            <tr ng-repeat="dayData in timeTableData track by $index">
+                <td> {{ dayData.time }}</td>
+                <td> {{ dayData.monday }}</td>
+                <td> {{ dayData.tuesday }}</td>
+                <td> {{ dayData.wednesday }}</td>
+                <td> {{ dayData.thursday }}</td>
+                <td> {{ dayData.friday }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top: 50px;">
+        <button type="button" class="btn btn-primary" ng-click="save()">저장</button>
+        <button type="button" class="btn btn-primary" ng-click="clear()">초기화</button>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/beans"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+             xmlns:beans="http://www.springframework.org/schema/beans"
+             xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-4.1.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context-4.1.xsd">
+
+       <context:property-placeholder location="classpath*:mysql/mysql.properties" />
+
+       <!-- mysql -->
+       <beans:bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+              <beans:property name="driverClassName" value="${jdbc.driver}"/>
+              <beans:property name="url" value="${jdbc.url}"/>
+              <beans:property name="username" value="${jdbc.username}"/>
+              <beans:property name="password" value="${jdbc.password}"/>
+       </beans:bean>
+</beans:beans>

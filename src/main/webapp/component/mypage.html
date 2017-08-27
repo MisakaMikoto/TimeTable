@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="/css/center.css">
+</head>
+<body>
+<div class="center" style="width: 500px; margin-top: 50px;" ng-controller="mypageController">
+    <H2> {{ id }} 님 환영합니다. </H2>
+    <H2 style="margin-bottom: 50px"> 시간표를 등록해 주세요. </H2>
+
+    <div class="form-group" style="width: 250px;">
+        <label for="name">과목 이름</label>
+        <input type="text" class="form-control" id="name" ng-model="name" placeholder="과목 이름을 적어주세요">
+    </div>
+    <div class="form-group" style="width: 250px;">
+        <label for="credit">과목 학점</label>
+        <input type="number" class="form-control" id="credit" ng-model="credit" placeholder="학점을 적어주세요. 범위는 1 ~ 3." min="1" max="3" maxlength="1">
+    </div>
+
+    <div style="margin-top: 25px;">
+        <button type="button" class="btn btn-primary" ng-click="insert()">추가</button>
+    </div>
+
+    <table class="table" style="width: 500px; margin-top: 50px;">
+        <thead>
+            <td>과목 이름</td>
+            <td>과목 학점</td>
+            <td>총 학점</td>
+            <td></td>
+        </thead>
+
+        <tbody>
+        <tr ng-repeat="subject in subjects">
+            <td> {{ subject.name }} </td>
+            <td> {{ subject.credit }} </td>
+            <td ng-attr-value="{{subject.allCredit}}"> {{ subject.allCredit }} </td>
+            <td>
+                <span ng-click="delete($index)" class="glyphicon glyphicon-minus" style="cursor: pointer"></span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top: 25px;">
+        <button type="button" class="btn btn-primary" ng-click="complete()">완료</button>
+    </div>
+</div>
+</body>
+</html>
