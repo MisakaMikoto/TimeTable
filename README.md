@@ -2,3 +2,13 @@
 Spec : JDK 1.8, Spring 4.1 Framework, Angularjs, Javascript, MySQL, Tomcat7
 
 # How to Run
+1. JDK 1.8 Install
+2. Tomcat7 Download
+3. Maven Download
+4. MySQL setting
+    4.1. move src/main/resources/mysql path
+    4.2. mysql.properties file open, modify jdbc.url's ip (change your mysql server ip)
+    4.3. move src/main/resources/mysql/sql path
+    4.4. open the schema.sql, user.sql, schedule.sql files and run script in you mysql
+5. Maven Build
+6. Run Tomcat7
