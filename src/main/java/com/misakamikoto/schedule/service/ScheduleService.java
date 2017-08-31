@@ -172,7 +172,7 @@ public class ScheduleService {
     // 3 : 목
     // 4 : 금
     public void createDayRandomList(List<Integer> dayRandomList) {
-        // 한 과목당 3일에 수업 시간을 적용한다.
+        // 한 과목당 3일의 수업 시간을 적용한다.
         while (dayRandomList.size() < 3) {
 
             // 요일은 총 5일 (월 ~ 금)
@@ -306,8 +306,8 @@ public class ScheduleService {
     // 1. 모두 2학점이면 남는 교시는 12교시
     // 2. 모두 3학점이면 남는 교시는 4교시
     // 3. 때문에 전체 20 교시 중 16교시는 반드시 확보하여야 한다.
-    //  3-1. 남는 자리 (x) 는 절대 5개가 되면 안되기 때문에
-    //  3-2. 해당 교시에 과목수가 3개가 겹쳐도 안되기 때문에
+    //  3-1. 남는 자리 (x) 는 절대 5개가 되면 안되기 때문에 (15 교시는 3x5 로 계산해도 15학점이라 최소 교시수에 만족시키지 못한다.)
+    //  3-2. 해당 교시에 과목수가 3개가 겹쳐도 안되기 때문에 (3개씩 겹치면 경우의 수가 너무 늘어나게 된다. 연산 제어의 목적)
     public boolean minimizationTimeTable(String[][] scheduleArray) {
         int xCount = 0;
         boolean isTriple = false;
